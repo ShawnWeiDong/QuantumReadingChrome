@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "量子速读",
+  "version": "1.1.0",
+  "description": "量子速读通过NLP技术将长文本内容转化为易于理解的短文本，并通过逐词高亮的方式帮助阅读障碍用户快速定位文本，提高阅读效率。",
+  "action": {
+    "default_icon": {
+      "16": "images/icon16.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    },
+    "default_title": "量子速读"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://aip.baidubce.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["overlay.css"]
+    }
+  ],
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  }
+} 

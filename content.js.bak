@@ -1,0 +1,312 @@
+// 监听来自background.js的消息
+chrome.runtime.onMessage.addListener(
+  function(request, sender, sendResponse) {
+    if (request.action === "extractContent") {
+      extractAndShowContent();
+      // 返回true表示将异步发送响应
+      return true;
+    }
+  }
+);
+
+// 监听自定义事件，以防消息传递失败
+document.addEventListener('WEBPAGE_EXTRACTOR_EXTRACT', function() {
+  extractAndShowContent();
+});
+
+// 百度NLP API配置
+const BAIDU_NLP_API = {
+  tokenUrl: 'https://aip.baidubce.com/oauth/2.0/token',
+  segmentUrl: 'https://aip.baidubce.com/rpc/2.0/nlp/v1/lexer',
+  apiKey: 'DpDNKZcyqoRwzcU3IpJ5em3H', // 请在此处填入您的API Key
+  secretKey: 'z7JvXKy9JrApI2l02CIrU1Gmz8x4QAdN' // 请在此处填入您的Secret Key
+};
+
+// 提取正文并显示在遮罩层
+function extractAndShowContent() {
+  // 检查是否已存在遮罩层
+  if (document.getElementById('webpage-extractor-overlay')) {
+    return;
+  }
+
+  // 提取网页正文内容
+  const content = extractMainContent();
+  
+  // 创建遮罩层
+  createOverlay(content);
+  
+  // 获取百度NLP分词结果
+  getAccessToken().then(token => {
+    if (token) {
+      segmentText(content, token);
+    }
+  }).catch(error => {
+    console.error('获取百度API Token失败:', error);
+    showError('无法连接到百度NLP服务，请检查API配置');
+  });
+}
+
+// 获取百度API的访问令牌
+async function getAccessToken() {
+  try {
+    const response = await fetch(`${BAIDU_NLP_API.tokenUrl}?grant_type=client_credentials&client_id=${BAIDU_NLP_API.apiKey}&client_secret=${BAIDU_NLP_API.secretKey}`);
+    const data = await response.json();
+    return data.access_token;
+  } catch (error) {
+    console.error('获取百度API Token失败:', error);
+    return null;
+  }
+}
+
+// 调用百度NLP分词API
+async function segmentText(text, accessToken) {
+  try {
+    // 显示加载状态
+    const loadingElement = document.getElementById('webpage-extractor-loading');
+    if (loadingElement) {
+      loadingElement.style.display = 'block';
+    }
+    
+    // 由于API有字符长度限制，这里取前2000个字符
+    const trimmedText = text.substring(0, 2000);
+    
+    const response = await fetch(`${BAIDU_NLP_API.segmentUrl}?charset=UTF-8&access_token=${accessToken}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        text: trimmedText
+      })
+    });
+    
+    const result = await response.json();
+    
+    // 隐藏加载状态
+    if (loadingElement) {
+      loadingElement.style.display = 'none';
+    }
+    
+    // 处理分词结果
+    if (result.items && result.items.length > 0) {
+      displaySegmentResult(result.items);
+    } else {
+      showError('分词结果为空');
+    }
+  } catch (error) {
+    console.error('分词请求失败:', error);
+    showError('分词请求失败，请检查网络连接');
+    
+    // 隐藏加载状态
+    const loadingElement = document.getElementById('webpage-extractor-loading');
+    if (loadingElement) {
+      loadingElement.style.display = 'none';
+    }
+  }
+}
+
+// 显示分词结果
+function displaySegmentResult(items) {
+  const segmentResultElement = document.getElementById('webpage-extractor-segment-result');
+  if (!segmentResultElement) return;
+  
+  // 构建分词结果HTML
+  let html = '';
+  items.forEach(item => {
+    html += `<span class="segment-item" title="${item.pos || '未知词性'}">${item.item}</span>`;
+  });
+  
+  segmentResultElement.innerHTML = html;
+  
+  // 显示分词结果区域
+  segmentResultElement.style.display = 'block';
+  
+  // 更新按钮状态
+  const viewOriginalBtn = document.getElementById('webpage-extractor-view-original');
+  const viewSegmentBtn = document.getElementById('webpage-extractor-view-segment');
+  
+  if (viewOriginalBtn && viewSegmentBtn) {
+    viewSegmentBtn.classList.add('active');
+    viewOriginalBtn.classList.remove('active');
+  }
+}
+
+// 显示错误信息
+function showError(message) {
+  const errorElement = document.createElement('div');
+  errorElement.className = 'webpage-extractor-error';
+  errorElement.textContent = message;
+  
+  const contentArea = document.getElementById('webpage-extractor-content');
+  if (contentArea) {
+    contentArea.appendChild(errorElement);
+  }
+  
+  // 5秒后自动移除错误提示
+  setTimeout(() => {
+    if (errorElement.parentNode) {
+      errorElement.parentNode.removeChild(errorElement);
+    }
+  }, 5000);
+}
+
+// 提取网页主要内容的函数
+function extractMainContent() {
+  // 常见的内容容器选择器
+  const contentSelectors = [
+    'article',
+    '.content',
+    '.post',
+    '.article',
+    '.post-content',
+    '.entry-content',
+    'main',
+    '#content',
+    '#main'
+  ];
+
+  let mainContent = '';
+  let mainElement = null;
+  let maxTextLength = 0;
+
+  // 尝试找到包含最多文本的内容元素
+  contentSelectors.forEach(selector => {
+    const elements = document.querySelectorAll(selector);
+    elements.forEach(element => {
+      const textLength = element.innerText.trim().length;
+      if (textLength > maxTextLength) {
+        maxTextLength = textLength;
+        mainElement = element;
+      }
+    });
+  });
+
+  // 如果没有找到合适的元素，就使用启发式方法
+  if (!mainElement || maxTextLength < 1000) {
+    // 获取所有段落元素
+    const paragraphs = document.querySelectorAll('p');
+    let paragraphTexts = [];
+    
+    // 过滤掉太短的段落
+    paragraphs.forEach(p => {
+      const text = p.innerText.trim();
+      if (text.length > 50) {
+        paragraphTexts.push(text);
+      }
+    });
+    
+    mainContent = paragraphTexts.join('\n\n');
+  } else {
+    mainContent = mainElement.innerText;
+  }
+
+  // 如果仍然没有找到合适的内容，返回整个body的内容
+  if (mainContent.length < 500) {
+    mainContent = document.body.innerText;
+  }
+
+  return mainContent;
+}
+
+// 创建遮罩层并显示内容
+function createOverlay(content) {
+  // 创建遮罩层容器
+  const overlay = document.createElement('div');
+  overlay.id = 'webpage-extractor-overlay';
+  
+  // 创建顶栏
+  const topBar = document.createElement('div');
+  topBar.id = 'webpage-extractor-topbar';
+  
+  // 创建关闭按钮
+  const closeButton = document.createElement('button');
+  closeButton.id = 'webpage-extractor-close';
+  closeButton.textContent = '关闭';
+  closeButton.addEventListener('click', removeOverlay);
+  
+  // 创建视图切换按钮组
+  const viewButtons = document.createElement('div');
+  viewButtons.id = 'webpage-extractor-view-buttons';
+  
+  // 原文按钮
+  const viewOriginalBtn = document.createElement('button');
+  viewOriginalBtn.id = 'webpage-extractor-view-original';
+  viewOriginalBtn.textContent = '原文';
+  viewOriginalBtn.classList.add('active'); // 默认显示原文
+  viewOriginalBtn.addEventListener('click', () => switchView('original'));
+  
+  // 分词按钮
+  const viewSegmentBtn = document.createElement('button');
+  viewSegmentBtn.id = 'webpage-extractor-view-segment';
+  viewSegmentBtn.textContent = '分词结果';
+  viewSegmentBtn.addEventListener('click', () => switchView('segment'));
+  
+  // 添加按钮到视图切换组
+  viewButtons.appendChild(viewOriginalBtn);
+  viewButtons.appendChild(viewSegmentBtn);
+  
+  // 创建内容区域
+  const contentArea = document.createElement('div');
+  contentArea.id = 'webpage-extractor-content';
+  
+  // 创建加载指示器
+  const loadingElement = document.createElement('div');
+  loadingElement.id = 'webpage-extractor-loading';
+  loadingElement.textContent = '正在分词中...';
+  loadingElement.style.display = 'none';
+  
+  // 添加文本内容
+  const contentText = document.createElement('div');
+  contentText.id = 'webpage-extractor-text';
+  contentText.textContent = content;
+  
+  // 创建分词结果区域
+  const segmentResult = document.createElement('div');
+  segmentResult.id = 'webpage-extractor-segment-result';
+  segmentResult.style.display = 'none'; // 初始隐藏
+  
+  // 组装UI
+  topBar.appendChild(viewButtons);
+  topBar.appendChild(closeButton);
+  contentArea.appendChild(loadingElement);
+  contentArea.appendChild(contentText);
+  contentArea.appendChild(segmentResult);
+  overlay.appendChild(topBar);
+  overlay.appendChild(contentArea);
+  
+  // 添加到页面
+  document.body.appendChild(overlay);
+  
+  // 防止页面滚动
+  document.body.style.overflow = 'hidden';
+}
+
+// 切换视图（原文/分词结果）
+function switchView(viewType) {
+  const originalText = document.getElementById('webpage-extractor-text');
+  const segmentResult = document.getElementById('webpage-extractor-segment-result');
+  const viewOriginalBtn = document.getElementById('webpage-extractor-view-original');
+  const viewSegmentBtn = document.getElementById('webpage-extractor-view-segment');
+  
+  if (viewType === 'original') {
+    originalText.style.display = 'block';
+    segmentResult.style.display = 'none';
+    viewOriginalBtn.classList.add('active');
+    viewSegmentBtn.classList.remove('active');
+  } else {
+    originalText.style.display = 'none';
+    segmentResult.style.display = 'block';
+    viewSegmentBtn.classList.add('active');
+    viewOriginalBtn.classList.remove('active');
+  }
+}
+
+// 移除遮罩层
+function removeOverlay() {
+  const overlay = document.getElementById('webpage-extractor-overlay');
+  if (overlay) {
+    overlay.remove();
+    // 恢复页面滚动
+    document.body.style.overflow = '';
+  }
+} 

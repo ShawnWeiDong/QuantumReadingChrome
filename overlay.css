@@ -1,0 +1,368 @@
+#webpage-extractor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.98);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#webpage-extractor-topbar {
+  height: 50px;
+  background-color: #f3f3f3;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  padding: 0 20px;
+  align-items: center;
+}
+
+#webpage-extractor-close {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-left: auto;
+}
+
+#webpage-extractor-close:hover {
+  background-color: #3367d6;
+}
+
+#webpage-extractor-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  position: relative;
+}
+
+#webpage-extractor-text {
+  max-width: 800px;
+  margin: 0 auto;
+  line-height: 1.8;
+  font-size: 18px;
+  color: #333;
+  font-family: 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+}
+
+#webpage-extractor-text p {
+  margin-bottom: 1.2em;
+  line-height: 1.8;
+}
+
+/* 视图切换按钮组 - 固定在左侧 */
+#webpage-extractor-view-buttons {
+  display: flex;
+  margin-right: auto;
+}
+
+#webpage-extractor-view-original,
+#webpage-extractor-view-segment {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  color: #333;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-right: 5px;
+}
+
+#webpage-extractor-view-original.active,
+#webpage-extractor-view-segment.active {
+  background-color: #4285f4;
+  color: white;
+  border-color: #4285f4;
+}
+
+/* 添加禁用状态样式 */
+#webpage-extractor-view-segment:disabled {
+  background-color: #f0f0f0;
+  color: #aaa;
+  border-color: #ddd;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* 分词结果样式 */
+#webpage-extractor-segment-result {
+  max-width: 800px;
+  margin: 0 auto;
+  line-height: 1.8;
+  font-size: 18px;
+  color: #333;
+  font-family: 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.segment-item {
+  display: inline-block;
+  margin: 0;
+  padding: 2px 0;
+  background-color: transparent;
+  /*border: 1px solid transparent;*/
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, opacity 0.2s;
+  opacity: 0.3;
+}
+
+/*.segment-item.active {
+  background-color: #d8e7f4;
+  opacity: 1;
+  padding: 0px 0px;
+}
+*/
+
+/* 分词视图切换选项 */
+.segment-options {
+  margin-bottom: 15px;
+  text-align: right;
+}
+
+.segment-view-btn {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  color: #555;
+  padding: 5px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 5px;
+  border-radius: 3px;
+}
+
+.segment-view-btn.active {
+  background-color: #4285f4;
+  color: white;
+  border-color: #4285f4;
+}
+
+.segment-content {
+  margin-top: 10px;
+  line-height: 1.8;
+}
+
+#segment-plain {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  padding: 10px;
+  background-color: #fafafa;
+  border-radius: 5px;
+  border: 1px solid #eee;
+}
+
+.segment-error {
+  color: #f44336;
+  padding: 10px;
+  background-color: #ffebee;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+/* 加载提示 */
+#webpage-extractor-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 16px;
+  z-index: 10;
+}
+
+/* 错误提示 */
+.webpage-extractor-error {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #f44336;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 16px;
+  z-index: 10000;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* 播放控制区域样式 - 放置在中间 */
+.player-controls {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.play-button {
+  background: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-right: 10px;
+  cursor: pointer;
+  color: #333;
+  font-size: 14px;
+  outline: none;
+}
+
+.play-button:hover {
+  background-color: #f5f5f5;
+}
+
+.play-button.playing {
+  background-color: #e6f2ff;
+  border-color: #99c2ff;
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+}
+
+.speed-label {
+  margin-right: 5px;
+  font-size: 14px;
+  color: #666;
+}
+
+.speed-slider {
+  width: 100px;
+  cursor: pointer;
+}
+
+.speed-value {
+  min-width: 36px;
+  text-align: right;
+  margin-left: 5px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* 提取的图片样式 */
+.extracted-image-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 15px auto;
+  text-align: center;
+}
+
+.extracted-image {
+  max-width: 100%;
+  max-height: 500px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 分词结果中的段落样式 */
+.segment-paragraph {
+  margin-bottom: 1.2em;
+  line-height: 1.8;
+  display: block;
+  width: 100%;
+}
+
+/* 段落内词项样式 */
+.segment-paragraph .segment-item {
+  display: inline-block;
+  margin: 0;
+  padding: 2px 0;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, opacity 0.2s;
+  opacity: 0.3;
+}
+
+/* 活跃词项样式 */
+.segment-paragraph .segment-item.active {
+  background-color: #fbfb77;
+  /*border-color: #d0e0f0;*/
+  opacity: 1;
+  padding: 0px 0px;
+}
+
+.header-image {
+  margin-top: 0;
+  margin-bottom: 2em;
+  text-align: center;
+}
+
+.header-image img {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* 标题样式 */
+#webpage-extractor-text h1, 
+#webpage-extractor-text h2, 
+#webpage-extractor-text h3, 
+#webpage-extractor-text h4, 
+#webpage-extractor-text h5, 
+#webpage-extractor-text h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+  font-weight: bold;
+  line-height: 1.3;
+  color: #222;
+}
+
+#webpage-extractor-text h3 {
+  font-size: 1.4em;
+}
+
+/* 列表样式 */
+#webpage-extractor-text ul,
+#webpage-extractor-text ol {
+  margin-bottom: 1.2em;
+  padding-left: 2em;
+  line-height: 1.6;
+}
+
+#webpage-extractor-text ul li,
+#webpage-extractor-text ol li {
+  margin-bottom: 0.5em;
+}
+
+/* 分词结果中的标题样式 */
+.segment-paragraph.segment-heading {
+  font-weight: bold;
+  font-size: 1.4em;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+  color: #222;
+}
+
+/* 分词结果中的列表样式 */
+.segment-paragraph.segment-list {
+  padding-left: 2em;
+  position: relative;
+}
+
+.segment-paragraph.segment-list[data-list-type="bullet"]::before {
+  content: "•";
+  position: absolute;
+  left: 0.8em;
+  top: 0;
+}
+
+.segment-paragraph.segment-list[data-list-type="number"]::before {
+  content: counter(segment-list) ".";
+  counter-increment: segment-list;
+  position: absolute;
+  left: 0.5em;
+  top: 0;
+} 
